@@ -1,191 +1,160 @@
 # Traits Configuration
 
-Traits are defined in `plugins/SoapsTraits/traits.yml`. Each trait has a name, optional stat bonuses, and a list of effects that trigger during gameplay.
+All traits live in `plugins/SoapsTraits/traits.yml` under the top-level `traits:` key.
 
----
-
-## Basic Structure
+## File structure
 
 ```yaml
 traits:
-  trait_name:
-    class: CLASS_NAME        # Optional: auto-assign when player picks this MMOCore class
-    stats:                   # Optional: permanent stat bonuses
-      stat_name: value
-    effects:                 # Optional: list of triggered effects
-      - trigger: trigger_type
-        cooldown: value      # Optional
-        conditions:          # Optional
-          - condition_type: value
-        actions:             # Required
-          - action_type: value
+  trait_id:
+    class: MMOCore_CLASS_ID    # optional
+    stats:                     # optional
+      attack_damage: 3
+      defense: 5
+    effects:                   # optional list
+      - trigger: attack
+        cooldown: 80
+        conditions:
+          - chance: 25%
+        actions:
+          - heal: 2
 ```
 
----
+## Trait ID rules
 
-## Trait Properties
+Trait names are normalized to lowercase. Valid IDs match:
 
-### `class`
-Links the trait to an MMOCore class. When a player selects that class, this trait is assigned automatically — no commands needed.
+- 3 to 32 characters
+- Letters, numbers, underscores (`_`), hyphens (`-`)
+
+Examples: `warrior`, `shadowstep_showcase`, `my-trait`
+
+Invalid names are rejected when saving from the GUI.
+
+## Class binding (optional)
 
 ```yaml
 warrior:
   class: WARRIOR
 ```
 
-The class name must match the MMOCore class ID (case-insensitive). If you leave this out, the trait can only be assigned manually with `/sts set <player> <trait>`.
+When MMOCore is installed, players who pick the `WARRIOR` class receive this trait automatically on join or class change. The `class` value must match the MMOCore profession ID exactly (case-insensitive match at runtime).
 
-Only one trait can be bound to each class.
+Traits without `class` are only assigned manually with `/sts set` or kept as showcase/default options.
 
----
-
-### `stats`
-Permanent stat bonuses that are active as long as the player has this trait. They apply on login, class change, or when you use `/sts set`, and are removed when the trait changes or the player disconnects.
+## Stats block (optional)
 
 ```yaml
 stats:
   max_health: 8
-  defense: 6
   attack_damage: 3
+  crit_chance: 11
 ```
 
-See [Stats System](Stats-System.md) for all available stat names.
+Stat keys use lowercase with underscores. See [Stats System](Stats-System.md) for the full list and MythicLib mapping.
 
----
+Stat keys must match `^[a-z0-9_.-]{2,40}$` when created through the GUI.
 
-### `effects`
-A list of triggered effects. Each effect fires when its trigger matches and all its conditions pass.
+## Effects list
+
+Each effect is one list entry with these fields:
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `trigger` | Yes | When to evaluate this effect. See [Triggers](Triggers.md). |
+| `conditions` | No | List of checks. All must pass. See [Conditions](Conditions.md). |
+| `actions` | Yes | List of results. At least one valid action required. See [Actions](Actions.md). |
+| `cooldown` | No | Ticks before this effect can fire again. Default: `0` (no cooldown). |
+
+### Effect example
 
 ```yaml
 effects:
-  - trigger: attack
-    cooldown: 100
+  - trigger: damaged
+    cooldown: 160
     conditions:
-      - health_below: 30%
+      - health_below: 40%
+      - chance: 30%
     actions:
-      - damage_bonus: 25%
-      - send_message: "&cRage!"
+      - heal: 4
+      - send_message: "&aYou recover!"
 ```
 
----
+## Condition and action YAML format
 
-## Effect Properties
-
-### `trigger` (Required)
-The event that can activate this effect. See [Triggers](Triggers.md) for all options.
-
-### `cooldown` (Optional)
-How long before this effect can fire again, per player. Tracked independently — two players won't share each other's cooldowns. Defaults to `0` (no cooldown).
-
-```yaml
-cooldown: 100    # 100 ticks = 5 seconds
-cooldown: 5s     # Same, written in seconds
-```
-
-See [Cooldowns & Durations](Cooldowns-and-Durations.md) for the full syntax.
-
-### `conditions` (Optional)
-A list of checks that all must pass before the actions run. If any condition fails, the whole effect is skipped for that event — and the cooldown is not consumed.
+Each condition and action is a single-key map in a list:
 
 ```yaml
 conditions:
-  - health_below: 30%
-  - chance: 25%
-  - is_sprinting: true
+  - health_below: 50%
+  - has_target: true
+
+actions:
+  - damage_bonus: 20%
+  - play_sound: ENTITY_PLAYER_LEVELUP
 ```
 
-See [Conditions](Conditions.md) for all options.
-
-### `actions` (Required)
-What happens when the trigger fires and all conditions pass. Actions execute in the order they're listed.
+Complex actions use nested maps:
 
 ```yaml
 actions:
-  - damage_bonus: 25%
-  - heal: 4
-  - send_message: "&aHealed!"
+  - apply_potion_effect:
+      type: SPEED
+      duration: 60
+      level: 2
+  - add_stat:
+      defense: 14
+      duration: 80
 ```
 
-See [Actions](Actions.md) for all options.
+## Strict validation
 
----
+When `settings.strict-config-validation` is `true` in `config.yml` (default):
 
-## Multiple Effects per Trait
+- One invalid condition or action in an effect causes the **whole effect** to be dropped at load.
+- The server logs a warning naming the bad entry.
 
-A trait can have as many effects as you want. Each one has its own trigger, conditions, and cooldown.
+When `false`, invalid entries are skipped but valid ones in the same effect still load.
 
-```yaml
-warrior:
-  class: WARRIOR
-  stats:
-    max_health: 8
-    defense: 6
+## Default bundled traits
 
-  effects:
-    # Chance to gain a temporary defense buff when hit
-    - trigger: damaged
-      cooldown: 100
-      conditions:
-        - chance: 20%
-      actions:
-        - add_stat:
-            defense: 12
-            duration: 80
+The shipped `traits.yml` includes:
 
-    # Heal on kill
-    - trigger: kill
-      conditions:
-        - chance: 30%
-      actions:
-        - heal: 3
-        - send_message: "&6For glory!"
+| Trait | Class binding |
+|-------|---------------|
+| `human` | HUMAN |
+| `warrior` | WARRIOR |
+| `mage` | MAGE |
+| `rogue` | ROGUE |
+| `paladin` | PALADIN |
+| `archer` | ARCHER |
+| `berserker` | BERSERKER |
+| `shadowstep_showcase` | none |
+| `executioner_showcase` | none |
+| `guardian_showcase` | none |
 
-    # Slow regen when low HP
-    - trigger: tick
-      conditions:
-        - health_below: 50%
-      actions:
-        - heal: 1
-```
+Showcase traits demonstrate advanced combinations without class binding.
 
----
+## Balancing notes (from defaults)
 
-## Default Trait
+The bundled file includes these guidelines:
 
-The `default-trait` setting in `config.yml` is the fallback for players who:
-- Join for the first time
-- Don't have a class-bound trait when changing classes
-- Have their trait removed via `/sts remove`
+- `chance`: usually 8% to 35%
+- `damage_bonus`: usually 8% to 35%
+- `reduce_damage`: usually below 45%
+- `teleport_forward`: usually 2 to 6 blocks
+- `knockback_target`: usually 0.4 to 1.4
+- `tick` trigger: always pair with a cooldown
 
-```yaml
-# config.yml
-default-trait: human
-```
+## Saving changes
 
-Players always have a trait — removing one just assigns the default.
+- **Manual:** Edit `traits.yml`, then `/sts reload`.
+- **GUI:** Changes save directly to `traits.yml` with automatic backup (`traits.yml.bak`).
+- **Import:** `/sts import <file.yml>` replaces `traits.yml` entirely. See [Import Export](Import-Export.md).
 
----
+## Related pages
 
-## Class Auto-Assignment
-
-When a player changes their class in MMOCore, SoapsTraits checks if any trait has a matching `class:` binding. If found, that trait is assigned automatically. If not, the player keeps their current trait or falls back to the default.
-
----
-
-## Naming
-
-- Trait names are case-insensitive and stored in lowercase
-- Multi-word names: use underscores (`dark_knight`) or hyphens (`shadow-mage`)
-- Class names in `class:` should match the MMOCore class ID exactly (case-insensitive match)
-
----
-
-## Validation
-
-If a trait fails to load due to invalid YAML or an unknown trigger/condition/action name, SoapsTraits will log a warning and skip that trait. Other traits will continue to load normally.
-
-Enable `debug-mode: true` in `config.yml` to see detailed loading information.
-
----
-
-> **Next:** [Triggers →](Triggers.md)
+- [Triggers](Triggers.md)
+- [Conditions](Conditions.md)
+- [Actions](Actions.md)
+- [Cooldowns and Durations](Cooldowns-and-Durations.md)

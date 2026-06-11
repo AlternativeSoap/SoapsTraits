@@ -1,53 +1,60 @@
 # Introduction
 
-## What is SoapsTraits?
+SoapsTraits is a trait system for RPG-style Minecraft servers. Each player has one active trait at a time. That trait provides:
 
-SoapsTraits gives your players unique traits tied to their MMOCore class. Each trait can grant permanent stat bonuses and trigger special effects during combat — things like healing on kill, reducing damage when blocking, or boosting speed after landing a crit.
+1. **Base stats** - Permanent bonuses applied through MythicLib (attack damage, defense, mana, and more).
+2. **Effects** - Event-driven abilities built from triggers, conditions, and actions in `traits.yml`.
 
-When a player selects the Warrior class in MMOCore, they automatically get the Warrior trait. When they switch classes, their trait switches too. You can also assign traits manually to any online player with a command.
-
----
-
-## How Effects Work
-
-Every trait effect follows the same logic: a **trigger** says when it can activate, **conditions** decide whether it actually fires, and **actions** define what happens.
+## How it works
 
 ```
-Player does something (attacks, gets hit, kills an enemy...)
-    ↓
-Trigger matches — the effect wakes up
-    ↓
-Conditions are checked (health below 30%? 25% chance roll? sprinting?)
-    ↓
-All conditions pass → Actions execute (heal, damage bonus, particles...)
-    ↓
-Cooldown starts (if one is set)
+Player event (attack, damage, kill, etc.)
+        |
+        v
+  Match trigger on active trait
+        |
+        v
+  All conditions pass?  --no-->  skip
+        |
+       yes
+        |
+        v
+  Cooldown ready?  --no-->  skip
+        |
+       yes
+        |
+        v
+  Run actions (heal, damage bonus, particles, etc.)
 ```
 
-**Example:** A Berserker trait might have an effect that says: whenever the player attacks (`trigger: attack`) and their health is below 30% (`health_below: 30%`), deal 30% extra damage (`damage_bonus: 30%`). This creates a natural "last stand" feeling — the lower your health, the harder you hit.
+Every player always has a trait. If MMOCore is installed and a trait is bound to their class, that trait is assigned automatically. Otherwise the server falls back to `default-trait` in `config.yml` (default: `human`).
 
----
+## What you can configure
 
-## What You Can Customize
+- **Class-linked traits** - Set `class: WARRIOR` on a trait to auto-assign when a player picks that MMOCore class.
+- **Manual traits** - Leave out `class` and assign with `/sts set <player> <trait>`.
+- **Combat effects** - Bonus damage on crit, dodge on sprint, execute windows, shield blocks, and more.
+- **Passive tick effects** - Heal over time, regen pulses, or any action on a repeating timer.
+- **In-game editor** - Staff with permission can create and edit traits through `/sts gui` without touching YAML.
 
-- **Traits** — Create as many as you want. Each has a name, an optional class binding, stats, and effects.
-- **Stats** — Permanent flat bonuses like max health, defense, speed, mana, crit chance, and more.
-- **Effects** — Triggered abilities using 9 triggers, 18 conditions, and 12 actions.
-- **Messages** — All plugin messages are customizable with color codes, hex colors, and MiniMessage.
+## What SoapsTraits is not
 
----
+- It is not a standalone class plugin. Class selection comes from MMOCore.
+- It does not replace MythicLib stats. Base and temporary stat changes go through MythicLib.
+- It does not add new mobs or skills. It reacts to vanilla combat events and MMOCore skill casts.
 
-## Requirements
+## Integration summary
 
-| Dependency | Version |
-|------------|---------|
-| Paper | 1.21+ |
-| Java | 25+ |
-| MythicLib | 1.7.1+ |
-| MMOCore | 1.13.1+ |
+| System | Role |
+|--------|------|
+| SoapsCommon | Shared config keys, startup, text parsing |
+| MythicLib | Applies trait stat modifiers and temporary `add_stat` buffs |
+| MMOCore | Class detection, mana, level, combat tag conditions |
 
-Both **MythicLib** and **MMOCore** are required. SoapsTraits will not load without them.
+See [Bridges and Integrations](Bridges-and-Integrations.md) for details.
 
----
+## Next steps
 
-> **Next:** [Getting Started →](Getting-Started.md)
+1. [Getting Started](Getting-Started.md) - Install and verify on your server.
+2. [Traits Configuration](Traits-Configuration.md) - Learn the YAML layout.
+3. [Examples](Examples.md) - Study the bundled traits.

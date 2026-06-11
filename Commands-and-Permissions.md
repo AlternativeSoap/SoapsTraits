@@ -1,115 +1,100 @@
-# Commands & Permissions
+# Commands and Permissions
 
-The main command is `/sts` (alias: `/soapstraits`).
+Main command: **`/sts`**  
+Alias: **`/soapstraits`**
 
-| Command | Description | Permission |
-|---------|-------------|------------|
-| `/sts info` | View your current trait, stats, and effect count | `soapstraits.user` |
-| `/sts set <player> <trait>` | Assign a trait to a player | `soapstraits.admin.set` |
-| `/sts remove <player>` | Remove a player's trait (resets to default) | `soapstraits.admin.remove` |
-| `/sts reload` | Reload all config files without restarting | `soapstraits.admin.reload` |
-| `/sts list` | List all available traits | `soapstraits.admin.list` |
-| `/sts debug <player>` | Toggle per-player debug output | `soapstraits.admin.debug` |
+Run `/sts` with no arguments to print the full usage list from `messages.yml`.
 
----
+## Player commands
 
-## Permissions
+| Command | Permission | Default | Description |
+|---------|------------|---------|-------------|
+| `/sts info` | `soapstraits.user` | true | Show your active trait, stats, and effect count |
+| `/sts toggle` | `soapstraits.user.toggle` | true | Enable or disable your trait's **effects** (base stats stay) |
+| `/sts stats` | `soapstraits.user.stats` | true | View your runtime trait stats |
+| `/sts gui` | `soapstraits.user.gui` | op | Open the in-game trait editor |
 
-| Permission | Default | Description |
-|------------|---------|-------------|
-| `soapstraits.user` | Everyone | Allows use of `/sts info` |
-| `soapstraits.admin.set` | OP | Assign traits to players |
-| `soapstraits.admin.remove` | OP | Remove traits from players |
-| `soapstraits.admin.reload` | OP | Reload configs |
-| `soapstraits.admin.list` | OP | List all traits |
-| `soapstraits.admin.debug` | OP | Toggle debug mode for a player |
+`info`, `toggle`, and `gui` require the sender to be a player.
 
----
+## Admin commands
 
-## Command Details
+| Command | Permission | Default | Description |
+|---------|------------|---------|-------------|
+| `/sts set <player> <trait>` | `soapstraits.admin.set` | op | Assign a trait to an online player |
+| `/sts remove <player>` | `soapstraits.admin.remove` | op | Remove trait and assign `default-trait` |
+| `/sts reload` | `soapstraits.admin.reload` | op | Reload config, traits, and messages |
+| `/sts list` | `soapstraits.admin.list` | op | List all trait IDs |
+| `/sts debug <player>` | `soapstraits.admin.debug` | op | Toggle live effect debug for a player |
+| `/sts reset <player>` | `soapstraits.admin.reset` | op | Reset player data to default trait |
+| `/sts stats <player>` | `soapstraits.admin.stats` | op | View another player's runtime stats |
+| `/sts migrate <old> <new>` | `soapstraits.admin.migrate` | op | Move all players from one trait to another |
+| `/sts cooldown <player> <trait> <ticks>` | `soapstraits.admin.cooldown` | op | Store cooldown timestamp in playerdata |
+| `/sts version` | `soapstraits.admin.version` | op | Show plugin version (1.0.0) |
+| `/sts test <trait> [player]` | `soapstraits.admin.test` | op | Assign trait for testing (defaults to self) |
+| `/sts import <file.yml>` | `soapstraits.admin.import` | op | Replace traits.yml and reload |
+| `/sts export [file.yml]` | `soapstraits.admin.export` | op | Copy traits.yml to a backup file |
 
-### `/sts info`
-Shows your currently active trait, its stat bonuses, and how many effects it has. Only works for players (not console).
+### Command notes
 
-Example output:
-```
----------- Trait Info ----------
-Active Trait: warrior
-Stat Modifiers:
-  - max_health: +8.0
-  - defense: +6.0
-  - attack_damage: +3.0
-Configured Effects: 2
-```
+- **set** requires the target player to be online.
+- **remove** never leaves a player without a trait; default is assigned immediately.
+- **migrate** updates saved assignments only; online players keep playing until relog or set.
+- **test** is shorthand for `set` during balancing sessions.
+- **reload** reports merged default config keys from the JAR when new keys were added.
 
----
-
-### `/sts set <player> <trait>`
-Assigns a trait to an online player. The player's old trait stats are removed and the new ones applied immediately. Both you and the target player receive confirmation messages.
-
-Trait names must match exactly what's defined in `traits.yml` (case-insensitive). Tab completion works for both player names and trait names.
+## Permission tree
 
 ```
-/sts set Notch warrior
-/sts set Steve mage
+soapstraits.user                    # Basic access (info)
+soapstraits.user.stats              # /sts stats (self)
+soapstraits.user.toggle             # /sts toggle
+soapstraits.user.gui                # /sts gui
+
+soapstraits.admin.set
+soapstraits.admin.remove
+soapstraits.admin.reload
+soapstraits.admin.list
+soapstraits.admin.debug
+soapstraits.admin.reset
+soapstraits.admin.stats             # /sts stats <other>
+soapstraits.admin.migrate
+soapstraits.admin.cooldown
+soapstraits.admin.version
+soapstraits.admin.test
+soapstraits.admin.import
+soapstraits.admin.export
 ```
 
----
+There is no parent `soapstraits.admin` node in `plugin.yml`. Grant each admin node explicitly or use a permissions plugin group.
 
-### `/sts remove <player>`
-Removes a player's current trait. Since every player must always have a trait, the default trait (set in `config.yml`) is assigned automatically after removal.
+## Tab completion
 
-```
-/sts remove Notch
-```
+Tab completion filters by permission:
 
----
+- Subcommands you cannot use are hidden.
+- Player names for `set`, `remove`, `debug`, `reset`, `stats`, `cooldown`, `test`.
+- Trait IDs for `set`, `migrate`, `cooldown`, `test`.
 
-### `/sts reload`
-Reloads `config.yml`, `traits.yml`, and `messages.yml`. Player trait assignments are preserved — only the trait definitions are refreshed. Active stats are cleaned up and re-applied to all online players.
+## LuckPerms example
 
-Use this after making any changes to your config files instead of restarting the server.
+```yaml
+# Default players
+- soapstraits.user
+- soapstraits.user.stats
+- soapstraits.user.toggle
 
----
+# Moderators
+- soapstraits.admin.list
+- soapstraits.admin.debug
+- soapstraits.admin.stats
 
-### `/sts list`
-Prints all trait names currently loaded from `traits.yml`. Useful for checking what's available before using `/sts set`.
-
----
-
-### `/sts debug <player>`
-Toggles real-time debug output for a specific player. When active, that player receives chat messages showing which triggers fire, which conditions pass or fail, and which actions execute — useful for testing new traits.
-
-Run the command again on the same player to turn it off.
-
-```
-/sts debug Notch      # Enable debug for Notch
-/sts debug Notch      # Disable debug for Notch
+# Admins
+- soapstraits.admin.*
+# (grant each node individually; no wildcard in plugin.yml)
 ```
 
-You can also enable global console debug output by setting `debug-mode: true` in `config.yml`.
+## Related pages
 
----
-
-## Permission Nodes
-
-| Permission | Description | Default |
-|------------|-------------|---------|
-| `soapstraits.user` | Access to `/sts info` | `true` (all players) |
-| `soapstraits.admin.set` | Set a player's trait | `op` |
-| `soapstraits.admin.remove` | Remove a player's trait | `op` |
-| `soapstraits.admin.reload` | Reload plugin configuration | `op` |
-| `soapstraits.admin.list` | List all available traits | `op` |
-| `soapstraits.admin.debug` | Toggle debug monitoring | `op` |
-
----
-
-## Aliases
-
-| Alias | Resolves To |
-|-------|-------------|
-| `/soapstraits` | `/sts` |
-
----
-
-> **Next:** [Traits Configuration →](Traits-Configuration.md)
+- [Getting Started](Getting-Started.md)
+- [GUI Editor](GUI-Editor.md)
+- [Import Export](Import-Export.md)

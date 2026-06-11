@@ -1,89 +1,106 @@
 # Stats System
 
-SoapsTraits uses MythicLib to apply stat bonuses to players. Any trait can define base stats that are active as long as the player has that trait, and effects can grant temporary stat buffs through the `add_stat` action.
+Trait stats are passive bonuses applied while a player has that trait. They are defined under the `stats:` block in `traits.yml` and applied through **MythicLib** stat modifiers.
 
----
+## Supported stat keys
 
-## Supported Stats
+| YAML key | MythicLib stat |
+|----------|----------------|
+| `attack_damage` | ATTACK_DAMAGE |
+| `crit_chance` | CRITICAL_STRIKE_CHANCE |
+| `crit_damage` | CRITICAL_STRIKE_POWER |
+| `defense` | DEFENSE |
+| `max_health` | MAX_HEALTH |
+| `speed` | MOVEMENT_SPEED |
+| `health_regen` | HEALTH_REGENERATION |
+| `mana` | MAX_MANA |
+| `mana_regen` | MANA_REGENERATION |
+| `cooldown_reduction` | COOLDOWN_REDUCTION |
 
-| Name | What it does |
-|------|-------------|
-| `attack_damage` | Flat bonus to melee and projectile damage |
-| `crit_chance` | Percentage chance to land a critical hit |
-| `crit_damage` | Bonus damage multiplier on critical hits |
-| `defense` | Reduces incoming damage |
-| `max_health` | Bonus maximum health |
-| `speed` | Bonus movement speed |
-| `health_regen` | HP regenerated per interval |
-| `mana` | Bonus maximum mana pool |
-| `mana_regen` | Mana regenerated per interval |
-| `cooldown_reduction` | Reduces skill cooldown durations |
+Custom stat names are passed to MythicLib in uppercase if they are not in the alias table.
 
-All values are additive bonuses on top of the player's existing stats. The exact numerical impact depends on your MythicLib configuration — test in-game to calibrate values.
-
----
-
-## Base Stats (Permanent)
-
-Stats defined in a trait's `stats:` block stay active for as long as the player has that trait:
+## Example
 
 ```yaml
 warrior:
   stats:
     max_health: 8
-    defense: 6
+    defense: 7
     attack_damage: 3
 ```
 
-- Applied when the trait is assigned (on join, class change, or `/sts set`)
-- Removed automatically when the trait is changed or the player disconnects
-- Re-applied on reconnect and after respawn
+Values are additive modifiers registered with keys like `soapstraits-base-warrior-attack_damage`.
 
----
+## When stats apply
 
-## Temporary Stat Buffs
+- On player join (short delay for MMOCore/MythicLib load)
+- On trait assignment (`/sts set`, class change, `ensureTrait`)
+- On respawn
+- After `/sts reload` (all online players refreshed)
 
-The `add_stat` action applies a stat bonus for a limited duration. Once the timer expires, the bonus is removed automatically.
+Stats are removed on quit and before trait swaps to avoid stacking.
 
-```yaml
-- trigger: damaged
-  cooldown: 100
-  conditions:
-    - chance: 20%
-  actions:
-    - add_stat:
-        defense: 12
-        duration: 80        # 80 ticks = 4 seconds
-```
+## Temporary stat buffs (`add_stat` action)
 
-See [Actions](Actions.md) for full `add_stat` usage.
-
----
-
-## Using Custom Stats
-
-If your MythicLib setup includes custom stats beyond the defaults above, you can use them by name:
+The `add_stat` action applies **temporary** modifiers separate from base trait stats:
 
 ```yaml
-stats:
-  my_custom_stat: 10
+actions:
+  - add_stat:
+      defense: 14
+      duration: 80
 ```
 
-Unrecognized stat names are passed directly to MythicLib. Make sure the name matches exactly what MythicLib expects (it will be uppercased automatically).
+- Duration is in ticks (`80` = 4 seconds).
+- Modifier keys use the pattern `soapstraits-<trait>-<stat>`.
+- When duration ends, the modifier is removed automatically.
+- Requires MythicLib.
 
----
-
-## `has_stat` Condition
-
-The `has_stat` condition passes if the player's current value for a stat is greater than zero:
+## `has_stat` condition
 
 ```yaml
 conditions:
-  - has_stat: attack_damage    # passes if the player has any attack damage bonus
+  - has_stat: attack_damage
 ```
 
-Useful for enabling effects only for classes that have specific stat bonuses.
+Passes when the player's MythicLib total for that stat is greater than zero. Useful for synergy checks, not for exact thresholds.
 
----
+## Viewing stats
 
-> **Next:** [Cooldowns & Durations →](Cooldowns-and-Durations.md)
+Players:
+
+```
+/sts info
+```
+
+Shows base stat modifiers on the active trait.
+
+Admins viewing runtime data:
+
+```
+/sts stats <player>
+```
+
+Shows per-player runtime stat map from `playerdata.yml` (used for tracking, separate from MythicLib).
+
+## MythicLib not installed
+
+Without MythicLib:
+
+- Base trait stats in `traits.yml` are loaded but **not applied**.
+- `add_stat` actions do nothing.
+- `has_stat` conditions always fail.
+
+Install MythicLib for any stat-related gameplay.
+
+## Balancing tips
+
+- Small values go a long way with MythicLib scaling. Start low and test with `/sts test`.
+- `speed` values are typically decimals (example: `0.035`).
+- `max_health` and `mana` stack with gear and other plugins through MythicLib.
+
+## Related pages
+
+- [Actions](Actions.md) - `add_stat` details
+- [Bridges and Integrations](Bridges-and-Integrations.md) - MythicLib bridge
+- [Traits Configuration](Traits-Configuration.md)

@@ -1,93 +1,111 @@
 # Getting Started
 
+This guide walks you through installing SoapsTraits 1.0.0 and confirming it works on your server.
+
 ## Requirements
 
-| Requirement | Details |
-|-------------|---------|
-| **Server Software** | Paper 1.21+ |
-| **Java** | 25 or higher |
-| **MythicLib** | 1.7.1+ |
-| **MMOCore** | 1.13.1+ |
-
-Both **MythicLib** and **MMOCore** are required. SoapsTraits will not load without them.
-
----
+- **Paper 1.21** (or compatible fork)
+- **SoapsCommon** installed and running
+- **MythicLib** and **MMOCore** strongly recommended for full functionality
 
 ## Installation
 
-1. Download and place **MythicLib** and **MMOCore** into your `plugins/` folder
-2. Download `SoapsTraits.jar` and place it in `plugins/` as well
-3. Start (or restart) your server
-4. SoapsTraits will generate its config files:
-   - `plugins/SoapsTraits/config.yml`
-   - `plugins/SoapsTraits/traits.yml`
-   - `plugins/SoapsTraits/messages.yml`
+1. Download **SoapsTraits 1.0.0** and place the JAR in your `plugins` folder.
+2. Install **SoapsCommon** if you have not already.
+3. Install **MythicLib** and **MMOCore** for class binding and stat support.
+4. Start or restart the server.
+5. Check the console for:
+   - `Loaded X trait(s).`
+   - `MythicLib integration enabled.` (if MythicLib is present)
+   - `MMOCore integration enabled.` (if MMOCore is present)
 
-If everything loaded correctly, your console will show:
+On first run the plugin creates:
+
 ```
-[SoapsTraits] MythicLib integration enabled.
-[SoapsTraits] MMOCore integration enabled.
-[SoapsTraits] Loaded 7 trait(s).
-[SoapsTraits] SoapsTraits has been enabled!
+plugins/SoapsTraits/
+  config.yml
+  traits.yml
+  messages.yml
+  playerdata.yml
 ```
 
-A fourth file, `playerdata.yml`, is created automatically to store player trait assignments. You do not need to edit this file manually.
+## First configuration check
 
----
-
-## Configuration Files
-
-### config.yml
-Controls global plugin settings.
+Open `plugins/SoapsTraits/config.yml` and confirm:
 
 ```yaml
 default-trait: human
-
-settings:
-  debug-mode: false
-  tick-interval: 20
-  save-interval: 6000
 ```
 
-- `default-trait` — The trait assigned to players who don't match any class binding, or when a trait is removed. Must match a trait name in `traits.yml`.
-- `debug-mode` — When `true`, prints trigger, condition, and action logs to the server console for all players. Useful for testing.
-- `tick-interval` — How often the `tick` trigger fires, in ticks. `20` = once per second.
-- `save-interval` — How often player data is auto-saved to disk, in ticks. `6000` = every 5 minutes. Data is always saved on shutdown and reload.
+This is the trait assigned when no class match exists. The bundled `traits.yml` includes `human` plus one trait per MMOCore class.
 
-### traits.yml
-This is where you define all your traits — their stats, effects, and class bindings. See [Traits Configuration](Traits-Configuration.md) for the full format.
+## Assign a trait manually
 
-### messages.yml
-Every message the plugin sends to players or admins. You can change colors, wording, and formatting. Supports legacy color codes (`&a`), hex colors (`<#RRGGBB>`), and MiniMessage tags.
+For testing without MMOCore:
 
----
-
-## Your First Trait
-
-Here's a minimal trait to get you started:
-
-```yaml
-traits:
-  warrior:
-    class: WARRIOR
-    stats:
-      max_health: 8
-      defense: 6
-
-    effects:
-      - trigger: kill
-        actions:
-          - heal: 3
-          - send_message: "&aVictory!"
+```
+/sts set <player> warrior
 ```
 
-This trait:
-- Is automatically assigned when a player picks the **WARRIOR** class in MMOCore
-- Gives them **+8 max health** and **+6 defense** permanently
-- Heals **3 HP** and shows a message whenever they kill an entity
+The player should see a chat message confirming the assignment. Base stats apply within a few ticks of join or assignment.
 
-After editing `traits.yml`, run `/sts reload` to apply the changes without restarting.
+## Verify trait info
 
----
+As the player:
 
-> **Next:** [Commands & Permissions →](Commands-and-Permissions.md)
+```
+/sts info
+```
+
+This shows the active trait name, stat modifiers, and how many effects are configured.
+
+## Reload after edits
+
+After changing `traits.yml` or `config.yml`:
+
+```
+/sts reload
+```
+
+Console warnings point to invalid triggers, conditions, or actions. With `strict-config-validation: true` (default), a bad condition or action causes the **entire effect** to be skipped at load time.
+
+## Enable debug output
+
+For troubleshooting effect firing:
+
+1. Set `debug-mode: true` in `config.yml` and reload.
+2. Run `/sts debug <player>` to toggle live debug messages in that player's chat.
+
+Debug lines show triggers, condition results, and actions as they run.
+
+## Enable the GUI editor
+
+The trait editor requires:
+
+- `gui.enabled: true` in `config.yml` (suite master switch)
+- `settings.gui-enabled: true` in `config.yml`
+- Permission `soapstraits.user.gui` (default: op)
+
+Then run:
+
+```
+/sts gui
+```
+
+See [GUI Editor](GUI-Editor.md) for the full workflow.
+
+## Common first-time issues
+
+| Problem | Fix |
+|---------|-----|
+| Plugin will not enable | Install SoapsCommon first |
+| Stats do not change | Install MythicLib; rejoin or `/sts reload` |
+| Class traits not assigned | Confirm MMOCore is loaded and `class:` matches the class ID |
+| Effects never fire | Check cooldowns, conditions, and `/sts debug` |
+| GUI says disabled | Set both `gui.enabled` and `settings.gui-enabled` to true |
+
+## Next steps
+
+- [Traits Configuration](Traits-Configuration.md) - Edit `traits.yml`
+- [Commands and Permissions](Commands-and-Permissions.md) - Full `/sts` list
+- [Examples](Examples.md) - Bundled trait breakdowns

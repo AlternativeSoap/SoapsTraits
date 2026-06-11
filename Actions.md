@@ -1,192 +1,111 @@
 # Actions
 
-Actions define what happens when a trigger fires and all conditions pass. They run in the order you list them.
+Actions run when a trigger fires and all conditions pass. They execute **in list order** within one effect.
+
+## YAML format
+
+Simple actions use a single key and value:
 
 ```yaml
 actions:
-  - heal: 5
-  - send_message: "&aVitality surge!"
-  - play_sound: ENTITY_PLAYER_LEVELUP
+  - heal: 4
+  - damage_bonus: 25%
+  - send_message: "&aHit!"
 ```
 
----
-
-## All Actions
-
-### `damage_bonus`
-Increases outgoing damage for the current attack. Use with `attack` or `crit` triggers.
+Map actions use nested keys:
 
 ```yaml
-- damage_bonus: 25%    # +25% of the base hit
-- damage_bonus: 10     # +10 flat damage
+actions:
+  - apply_potion_effect:
+      type: SPEED
+      duration: 60
+      level: 2
 ```
 
-You can use a flat number or a percentage. Multiple `damage_bonus` actions in one effect add together.
+## All actions (1.0.0)
 
----
+### Combat
 
-### `reduce_damage`
-Reduces the incoming damage the player receives. Use with the `damaged` trigger.
+| Action | Value | Effect |
+|--------|-------|--------|
+| `damage_bonus` | `25%` or `5` | Adds percent or flat bonus to outgoing damage on `attack`/`crit` |
+| `reduce_damage` | `30%` or `5` | Reduces incoming damage on `damaged` |
+| `cancel_event` | `true` | Cancels the combat event (dodge). Value ignored. |
+| `knockback_target` | `1.2` | Pushes the current target away from the player |
+| `set_on_fire` | `60` | Ignites the target for this many ticks (default 60 if invalid) |
+
+Percent values use a `%` suffix. Plain numbers are flat amounts.
+
+### Recovery
+
+| Action | Value | Effect |
+|--------|-------|--------|
+| `heal` | `4` | Heals the player by this many HP |
+| `feed` | `6` or map | Restores hunger. Map: `food` and `saturation` keys |
+| `give_mana` | `10` | Restores MMOCore mana |
+| `clear_negative_effects` | `true` | Removes common debuffs from the player |
+| `remove_potion_effect` | `SLOWNESS` | Removes one potion effect type |
+
+**Feed map example:**
 
 ```yaml
-- reduce_damage: 30%    # take 30% less damage
-- reduce_damage: 5      # take 5 less damage (flat)
+- feed:
+    food: 2
+    saturation: 1
 ```
 
-Damage cannot go below zero. Multiple reductions in the same effect add together.
+If `feed` is a plain number, saturation defaults to `0`.
 
----
+### Stats and buffs
 
-### `heal`
-Restores the player's health. Cannot exceed their maximum HP.
+| Action | Value | Effect |
+|--------|-------|--------|
+| `add_stat` | map | Temporary MythicLib stat buff |
 
 ```yaml
-- heal: 4
-- heal: 10
+- add_stat:
+    defense: 14
+    duration: 80
 ```
 
----
+- All keys except `duration` are stat names with numeric values.
+- `duration` is in ticks. Omit or use `-1` for permanent until removed manually.
+- Requires MythicLib.
 
-### `give_mana`
-Restores the player's mana through MMOCore. Requires MMOCore to be installed.
+### Potion effects
 
-```yaml
-- give_mana: 15
-- give_mana: 50
-```
-
----
-
-### `cancel_event`
-Cancels the current damage event — the player takes no damage at all. Best used on the `damaged` trigger to create a dodge mechanic.
-
-```yaml
-- cancel_event: true
-```
-
-Example dodge:
-
-```yaml
-- trigger: damaged
-  conditions:
-    - is_sprinting: true
-    - chance: 12%
-  actions:
-    - cancel_event: true
-    - send_message: "&7Dodged!"
-    - play_sound: ENTITY_PHANTOM_FLAP
-```
-
----
-
-### `send_message`
-Sends a chat message to the player.
-
-```yaml
-- send_message: "&aYou healed!"
-- send_message: "<#FF6600>Fire activated!"
-- send_message: "<gradient:red:yellow>Rage!"
-```
-
-Supports legacy color codes (`&a`, `&l`, etc.), hex colors (`<#RRGGBB>`), and MiniMessage tags.
-
----
-
-### `play_sound`
-Plays a sound at the player's location. Use the Bukkit `Sound` enum name (uppercase).
-
-```yaml
-- play_sound: ENTITY_PLAYER_LEVELUP
-- play_sound: ENTITY_PHANTOM_FLAP
-- play_sound: ENTITY_ENDER_DRAGON_GROWL
-```
-
-Common sounds: `ENTITY_PLAYER_LEVELUP`, `ITEM_ARMOR_EQUIP_IRON`, `ENTITY_ARROW_HIT_PLAYER`, `ENTITY_PHANTOM_FLAP`, `BLOCK_ANVIL_LAND`, `ENTITY_ENDER_DRAGON_GROWL`, `ENTITY_WITHER_DEATH`
-
----
-
-### `set_on_fire`
-Sets the **target entity** on fire for the given duration. Requires a target in context — use with `attack`, `crit`, or `kill` triggers.
-
-```yaml
-- set_on_fire: 60      # 60 ticks = 3 seconds
-- set_on_fire: 3s      # same, written in seconds
-```
-
-See [Cooldowns and Durations](Cooldowns-and-Durations.md) for duration format options.
-
----
-
-### `remove_potion_effect`
-Removes a potion effect from the player. Use the Bukkit `PotionEffectType` name (uppercase).
-
-```yaml
-- remove_potion_effect: SLOWNESS
-- remove_potion_effect: POISON
-```
-
----
-
-### `apply_potion_effect`
-Applies a potion effect to the player.
-
-| Property | Required | Description |
-|----------|----------|-------------|
-| `type` | Yes | Bukkit `PotionEffectType` name (uppercase) |
-| `duration` | Yes | How long it lasts — ticks or duration string |
-| `level` | No (default: 1) | Effect level: 1 = Level I, 2 = Level II, etc. |
+| Action | Value | Effect |
+|--------|-------|--------|
+| `apply_potion_effect` | map | Applies a potion effect to the player |
 
 ```yaml
 - apply_potion_effect:
     type: SPEED
     duration: 60
-    level: 2          # Speed II for 3 seconds
-
-- apply_potion_effect:
-    type: INVISIBILITY
-    duration: 5s
     level: 1
 ```
 
-Common effect types: `SPEED`, `SLOWNESS`, `STRENGTH`, `WEAKNESS`, `REGENERATION`, `POISON`, `BLINDNESS`, `INVISIBILITY`, `FIRE_RESISTANCE`, `WATER_BREATHING`, `JUMP_BOOST`, `NIGHT_VISION`, `HASTE`, `ABSORPTION`, `SLOW_FALLING`
+- `type`: Bukkit `PotionEffectType` name.
+- `duration`: ticks.
+- `level`: potion level (1 = Speed I, 2 = Speed II). `amplifier` is accepted as an alias for `level`.
+- Defaults: `SPEED`, 100 ticks, level 1.
 
----
+### Movement
 
-### `add_stat`
-Temporarily adds a stat buff to the player via MythicLib. Requires MythicLib to be installed.
+| Action | Value | Effect |
+|--------|-------|--------|
+| `teleport_forward` | `4` | Teleports the player forward by this many blocks (eye direction) |
 
-| Property | Required | Description |
-|----------|----------|-------------|
-| stat name | Yes | The stat to boost and its value |
-| `duration` | No | How long the buff lasts. Omit for a permanent modifier. |
+### Feedback
 
-```yaml
-- add_stat:
-    defense: 12
-    duration: 80       # 4 seconds
+| Action | Value | Effect |
+|--------|-------|--------|
+| `send_message` | `"&aHello!"` | Sends a chat message to the player (`&` color codes supported) |
+| `play_sound` | `ENTITY_PLAYER_LEVELUP` | Plays a sound at the player's location |
+| `spawn_particle` | map or string | Spawns particles at the player |
 
-- add_stat:
-    attack_damage: 15
-    crit_chance: 10
-    duration: 5s
-```
-
-You can buff multiple stats in a single `add_stat` action. See [Stats System](Stats-System.md) for all valid stat names.
-
----
-
-### `spawn_particle`
-Spawns particles at the player's location.
-
-| Property | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `type` | Yes | — | Bukkit `Particle` name (uppercase) |
-| `amount` | No | `10` | How many particles |
-| `spread` | No | `0.5` | Spread radius on all axes |
-| `spread_x` | No | `spread` | Spread on X axis (overrides `spread`) |
-| `spread_y` | No | `spread` | Spread on Y axis (overrides `spread`) |
-| `spread_z` | No | `spread` | Spread on Z axis (overrides `spread`) |
-| `speed` | No | `0` | Particle speed |
+**Particle map:**
 
 ```yaml
 - spawn_particle:
@@ -194,14 +113,63 @@ Spawns particles at the player's location.
     amount: 15
     spread: 0.3
     speed: 0.05
-
-- spawn_particle:
-    type: HEART
-    amount: 5
 ```
 
-Common particle types: `FLAME`, `CRIT`, `SMOKE`, `ENCHANT`, `HEART`, `DAMAGE_INDICATOR`, `END_ROD`, `SWEEP_ATTACK`, `TOTEM_OF_UNDYING`, `SOUL_FIRE_FLAME`
+| Key | Default | Description |
+|-----|---------|-------------|
+| `type` | `FLAME` | Bukkit `Particle` name |
+| `amount` / `count` | `10` | Particle count |
+| `spread` | `0.5` | Shorthand for all axes |
+| `spread_x`, `spread_y`, `spread_z` | from `spread` | Per-axis spread |
+| `speed` | `0` | Particle velocity |
 
----
+A string value uses that particle type with default count and spread.
 
-> **Next:** [Stats System →](Stats-System.md)
+## Combat action notes
+
+- `damage_bonus` stacks additively within one hit (flat plus percent).
+- `reduce_damage` applies on the `damaged` trigger before final damage.
+- `cancel_event` on `damaged` prevents the hit entirely (rogue dodge pattern).
+- `knockback_target` needs a valid target in context.
+
+## Invalid actions
+
+Unknown action types log a warning. With `strict-config-validation: true`, the whole effect is skipped.
+
+An effect with zero valid actions is always skipped.
+
+## Examples
+
+**Warrior execute:**
+
+```yaml
+actions:
+  - damage_bonus: 20%
+  - knockback_target: 0.8
+  - play_sound: ENTITY_PLAYER_ATTACK_STRONG
+```
+
+**Mage blink:**
+
+```yaml
+actions:
+  - teleport_forward: 4
+  - send_message: "&bArcane blink!"
+  - play_sound: ENTITY_ENDERMAN_TELEPORT
+```
+
+**Paladin cleanse:**
+
+```yaml
+actions:
+  - heal: 4
+  - clear_negative_effects: true
+  - play_sound: BLOCK_AMETHYST_BLOCK_CHIME
+```
+
+## Related pages
+
+- [Triggers](Triggers.md)
+- [Conditions](Conditions.md)
+- [Stats System](Stats-System.md)
+- [Cooldowns and Durations](Cooldowns-and-Durations.md)

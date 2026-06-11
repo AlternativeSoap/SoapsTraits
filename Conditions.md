@@ -1,240 +1,138 @@
 # Conditions
 
-Conditions are checks that all must pass before an effect's actions run. If any one fails, the effect is skipped entirely for that event — and the cooldown is not consumed. Conditions are evaluated in order.
+Conditions gate whether an effect runs. **All** conditions in an effect must pass. There is no OR logic within a single effect; chain separate effects if you need alternatives.
+
+## YAML format
+
+Each condition is one entry in a list:
 
 ```yaml
-effects:
-  - trigger: attack
-    conditions:
-      - health_below: 30%
-      - chance: 25%
-      - is_sprinting: true
-    actions:
-      - damage_bonus: 40%
+conditions:
+  - health_below: 40%
+  - chance: 25%
+  - has_target: true
 ```
 
----
+Percent values accept a `%` suffix or plain numbers (`40` and `40%` both work).
 
-## All Conditions
+## All conditions (1.0.0)
 
-### `health_below`
-Passes if the player's current health is below the given percentage.
+### Health (player)
+
+| Condition | Value | Passes when |
+|-----------|-------|-------------|
+| `health_below` | `30%` | Player HP% is **strictly below** the value |
+| `health_above` | `70%` | Player HP% is **strictly above** the value |
+| `health_between` | `30-60%` | Player HP% is **inclusive** between min and max |
+
+HP% is current health divided by max health times 100.
+
+### Health (target)
+
+| Condition | Value | Passes when |
+|-----------|-------|-------------|
+| `target_health_below` | `35%` | Target entity HP% is strictly below the value |
+
+Requires a living target in context (usually from `attack` or `damaged`).
+
+### Random
+
+| Condition | Value | Passes when |
+|-----------|-------|-------------|
+| `chance` | `25%` | Random roll succeeds at the given percentage |
+
+### Position and world
+
+| Condition | Value | Passes when |
+|-----------|-------|-------------|
+| `biome` | `plains` | Player is in that biome (Bukkit biome key) |
+| `world` | `world_nether` | Player is in that world name |
+| `weather` | `CLEAR`, `RAIN`, or `THUNDER` | World weather matches |
+| `time` | `DAY` or `NIGHT` | World time matches (night: 13000-22999) |
+| `distance_to_target` | `5` | Target is within this many blocks (not exact distance) |
+
+### Combat context
+
+| Condition | Value | Passes when |
+|-----------|-------|-------------|
+| `has_target` | `true` | Effect context has a target entity |
+| `target_is_player` | `true` | Target is a player |
+| `target_type` | `ZOMBIE` | Target entity type matches (Bukkit enum name) |
+| `behind_target` | `true` | Player is behind the target's facing direction |
+
+`behind_target` uses a dot-product check on facing vectors. Value is conventionally `true`; the parser ignores the actual value.
+
+### Player state
+
+| Condition | Value | Passes when |
+|-----------|-------|-------------|
+| `is_sprinting` | `true` | Player is sprinting |
+| `is_sneaking` | `true` | Player is sneaking |
+| `is_blocking` | `true` | Player is blocking with a shield |
+| `has_potion_effect` | `SPEED` | Player has that potion effect type |
+
+Boolean conditions ignore the YAML value; presence of the key is enough.
+
+### Stats and MMOCore
+
+| Condition | Value | Passes when |
+|-----------|-------|-------------|
+| `has_stat` | `attack_damage` | MythicLib total for that stat is above 0 |
+| `mana_above` | `50%` | MMOCore mana% is above the value |
+| `mana_below` | `20%` | MMOCore mana% is below the value |
+| `level_above` | `10` | MMOCore player level is above the value |
+| `is_in_combat` | `true` | MMOCore combat tag is active |
+
+`has_stat`, mana, level, and combat conditions require the relevant bridge plugins.
+
+## Examples
+
+**Execute window:**
 
 ```yaml
-- health_below: 30%    # fires when HP < 30%
-- health_below: 50%
+conditions:
+  - has_target: true
+  - target_health_below: 25%
 ```
 
----
-
-### `health_above`
-Passes if the player's current health is above the given percentage.
+**Night ambush:**
 
 ```yaml
-- health_above: 90%    # fires when HP > 90%
-- health_above: 70%
+conditions:
+  - time: NIGHT
+  - behind_target: true
+  - target_is_player: true
 ```
 
----
-
-### `chance`
-Passes randomly with the given probability. A fresh roll happens every time the effect is evaluated.
+**Low HP sustain:**
 
 ```yaml
-- chance: 25%     # 25% chance to pass
-- chance: 10%
-- chance: 100%    # always passes
+conditions:
+  - health_between: 15-45%
+  - chance: 30%
 ```
 
----
-
-### `biome`
-Passes if the player is currently in the specified biome. Use the Bukkit biome name (case-insensitive).
+**Ranged shot:**
 
 ```yaml
-- biome: plains
-- biome: dark_forest
-- biome: nether_wastes
+conditions:
+  - has_target: true
+  - distance_to_target: 18
 ```
 
-Common biome names: `plains`, `forest`, `desert`, `jungle`, `swamp`, `dark_forest`, `nether_wastes`, `soul_sand_valley`, `crimson_forest`, `the_end`, `end_highlands`
+## Invalid conditions
 
----
+Unknown condition types log a warning. With strict validation enabled, the parent effect is skipped entirely.
 
-### `time`
-Passes based on the current in-game time. Only `DAY` and `NIGHT` are accepted.
+## Tips
 
-```yaml
-- time: NIGHT     # ticks 13000–22999
-- time: DAY       # any other time
-```
+- Pair `has_target: true` with any target-based condition to avoid silent failures.
+- `health_between` clamps values to 0-100 and ensures min is not above max.
+- `distance_to_target` checks squared distance (within range, not at exact range).
+- Conditions are checked **after** cooldown, so a failed condition does not consume cooldown.
 
----
+## Related pages
 
-### `distance_to_target`
-Passes if the player is **within** the specified number of blocks from their target. Requires a target to be in context (use with `attack`, `damaged`, `kill`, `crit`).
-
-```yaml
-- distance_to_target: 10    # passes when within 10 blocks
-- distance_to_target: 5
-```
-
----
-
-### `behind_target`
-Passes if the player is positioned behind their target — in roughly the rear 90° arc. Requires a target in context.
-
-```yaml
-- behind_target: true
-```
-
-Classic backstab check. Great for Rogue-type classes.
-
----
-
-### `has_stat`
-Passes if the player's current value for the given stat is greater than zero. Requires MythicLib.
-
-```yaml
-- has_stat: attack_damage
-- has_stat: crit_chance
-```
-
-Uses the same stat names as the `stats:` block. See [Stats System](Stats-System.md).
-
----
-
-### `is_sprinting`
-Passes if the player is currently sprinting.
-
-```yaml
-- is_sprinting: true
-```
-
----
-
-### `is_sneaking`
-Passes if the player is currently holding sneak.
-
-```yaml
-- is_sneaking: true
-```
-
----
-
-### `is_blocking`
-Passes if the player is actively blocking with a shield.
-
-```yaml
-- is_blocking: true
-```
-
----
-
-### `is_in_combat`
-Passes if the player has the MMOCore combat tag active. Requires MMOCore — always returns false if MMOCore isn't available.
-
-```yaml
-- is_in_combat: true
-```
-
----
-
-### `has_potion_effect`
-Passes if the player currently has the specified potion effect. Use the Bukkit `PotionEffectType` name (uppercase).
-
-```yaml
-- has_potion_effect: SPEED
-- has_potion_effect: INVISIBILITY
-- has_potion_effect: REGENERATION
-```
-
-Common effect names: `SPEED`, `SLOWNESS`, `STRENGTH`, `WEAKNESS`, `REGENERATION`, `POISON`, `BLINDNESS`, `INVISIBILITY`, `FIRE_RESISTANCE`, `WATER_BREATHING`
-
----
-
-### `target_type`
-Passes if the target entity matches the given entity type. Requires a target in context. Use the Bukkit `EntityType` name (uppercase).
-
-```yaml
-- target_type: ZOMBIE
-- target_type: SKELETON
-- target_type: PLAYER
-```
-
-Common entity types: `ZOMBIE`, `SKELETON`, `CREEPER`, `ENDERMAN`, `PLAYER`, `VILLAGER`, `WITHER`, `ENDER_DRAGON`
-
----
-
-### `world`
-Passes if the player is in the specified world. The world name must match exactly (case-sensitive).
-
-```yaml
-- world: world
-- world: world_nether
-- world: world_the_end
-- world: my_custom_world
-```
-
----
-
-### `mana_above`
-Passes if the player's current mana is above the given percentage. Requires both MMOCore (current mana) and MythicLib (max mana) — always returns false if either is unavailable.
-
-```yaml
-- mana_above: 60%
-- mana_above: 80%
-```
-
----
-
-### `mana_below`
-Passes if the player's current mana is below the given percentage. Same requirements as `mana_above`.
-
-```yaml
-- mana_below: 20%
-- mana_below: 50%
-```
-
----
-
-### `level_above`
-Passes if the player's MMOCore level is above the specified value. Requires MMOCore.
-
-```yaml
-- level_above: 10     # passes at level 11+
-- level_above: 25
-```
-
----
-
-## Combining Conditions
-
-All conditions must pass. Combine them to create nuanced, situational effects:
-
-```yaml
-# Backstab: only from behind, only while sneaking, 50% chance
-- trigger: attack
-  conditions:
-    - is_sneaking: true
-    - behind_target: true
-    - chance: 50%
-  actions:
-    - damage_bonus: 60%
-    - send_message: "&7Critical backstab!"
-```
-
-```yaml
-# Tick-based heal: only at night, only below 40% HP
-- trigger: tick
-  cooldown: 100
-  conditions:
-    - time: NIGHT
-    - health_below: 40%
-  actions:
-    - heal: 3
-```
-
----
-
-> **Next:** [Actions →](Actions.md)
+- [Triggers](Triggers.md)
+- [Actions](Actions.md)
+- [Bridges and Integrations](Bridges-and-Integrations.md)

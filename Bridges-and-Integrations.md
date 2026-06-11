@@ -1,81 +1,100 @@
-# Bridges & Integrations
+# Bridges and Integrations
 
-SoapsTraits requires two plugins to work: **MythicLib** and **MMOCore**. Both must be installed on your server. This page covers what each one contributes and what happens when specific features rely on them.
+SoapsTraits is built to sit alongside the Soaps suite and popular MMO plugins.
 
----
+## SoapsCommon (required)
 
-## MythicLib
+Listed as a hard dependency in `plugin.yml`.
 
-MythicLib powers the stat system. SoapsTraits uses it to apply stat bonuses to players and to detect skill casts.
+Provides:
 
-**What it enables:**
+- Shared startup banner and config merge on reload
+- `SoapsConfigKeys` for suite-wide settings like `gui.enabled`
+- Text parsing for messages (MiniMessage and legacy `&` codes)
 
-| Feature | Notes |
-|---------|-------|
-| Base stats (`stats:` block) | Permanent bonuses from a trait |
-| `add_stat` action | Temporary stat buffs with a duration |
-| `skill_cast` trigger | Fires when a player casts a MythicLib skill |
-| `has_stat` condition | Checks if a player has a non-zero stat value |
+Without SoapsCommon the plugin will not enable.
 
-**Stat name mapping:**
+## MythicLib (soft depend)
 
-When you write stat names in `traits.yml`, SoapsTraits maps them to MythicLib's internal names:
+**Recommended.** Powers all stat modifier features.
 
-| `traits.yml` name | MythicLib stat |
-|-------------------|----------------|
-| `attack_damage` | `ATTACK_DAMAGE` |
-| `crit_chance` | `CRITICAL_STRIKE_CHANCE` |
-| `crit_damage` | `CRITICAL_STRIKE_POWER` |
-| `defense` | `DEFENSE` |
-| `max_health` | `MAX_HEALTH` |
-| `speed` | `MOVEMENT_SPEED` |
-| `health_regen` | `HEALTH_REGENERATION` |
-| `mana` | `MAX_MANA` |
-| `mana_regen` | `MANA_REGENERATION` |
-| `cooldown_reduction` | `COOLDOWN_REDUCTION` |
+### What it does
 
-**If MythicLib is missing:** The plugin won't start — it's a required dependency. If the version you have doesn't support skill cast events, the `skill_cast` trigger simply won't fire; everything else works normally.
+| Feature | Bridge behavior |
+|---------|-----------------|
+| Trait `stats:` block | Registers base modifiers on assign/reload |
+| `add_stat` action | Temporary modifiers with optional duration |
+| `has_stat` condition | Reads MythicLib stat totals |
 
----
+### Stat name mapping
 
-## MMOCore
+SoapsTraits YAML keys map to MythicLib stats automatically. See [Stats System](Stats-System.md).
 
-MMOCore powers the class system, mana, combat tagging, and player levels.
+### Without MythicLib
 
-**What it enables:**
+Console warns: `MythicLib not found. Stat modifier features will be disabled.`
 
-| Feature | Notes |
-|---------|-------|
-| Class binding | Auto-assign a trait when a player selects an MMOCore class |
-| `is_in_combat` condition | Checks MMOCore's combat tag |
-| `give_mana` action | Restores a player's mana |
-| `mana_above` / `mana_below` conditions | Checks mana percentage (requires MythicLib too) |
-| `level_above` condition | Checks the player's MMOCore level |
+Effects that only use heal, particles, sounds, etc. still work.
 
-**Class auto-assignment:** Add a `class:` line to a trait definition with the MMOCore class ID. When a player picks that class, they automatically receive that trait.
+## MMOCore (soft depend)
+
+**Recommended** for class-based servers.
+
+### What it does
+
+| Feature | Bridge behavior |
+|---------|-----------------|
+| `class:` on traits | Auto-assign trait when player picks that class |
+| `skill_cast` trigger | Listens for MMOCore skill cast events |
+| `give_mana` action | Restores mana through MMOCore API |
+| `mana_above` / `mana_below` | Reads current mana vs max mana percent |
+| `level_above` | Reads MMOCore player level |
+| `is_in_combat` | Reads MMOCore combat tag |
+
+### Class binding
 
 ```yaml
-warrior:
-  class: WARRIOR    # must match the MMOCore class ID exactly (case-insensitive)
+mage:
+  class: MAGE
 ```
 
-**If MMOCore is missing:** The plugin won't start — it's a required dependency. If specific MMOCore events aren't available in your version, those features (class auto-assignment) are silently skipped; the rest of the plugin works normally.
+The value must match `PlayerData.getProfess().getId()` from MMOCore (example: `WARRIOR`, `MAGE`, `HUMAN`).
 
----
+On join and class change, `ensureTrait()` picks the matching trait or falls back to `default-trait`.
 
-## Feature Summary
+### Reflective listeners
 
-| Feature | Requires | If unavailable |
-|---------|----------|----------------|
-| `stats:` base modifiers | MythicLib | Silently ignored |
-| `add_stat` action | MythicLib | Does nothing |
-| `skill_cast` trigger | MythicLib | Never fires |
-| `give_mana` action | MMOCore | Does nothing |
-| `is_in_combat` condition | MMOCore | Always false |
-| `mana_above` / `mana_below` | MMOCore + MythicLib | Always false |
-| `level_above` condition | MMOCore | Always false |
-| Class auto-assignment | MMOCore | Uses default trait |
+Skill cast and class change events are registered reflectively so the plugin JAR loads even when MMOCore is absent. If MMOCore is not installed, those triggers and conditions simply do nothing or fail closed.
 
----
+## Plugin load order
 
-> **Next:** [Default Configs →](Default-Configs.md)
+From `plugin.yml`:
+
+```yaml
+depend:
+  - SoapsCommon
+softdepend:
+  - MythicLib
+  - MMOCore
+```
+
+SoapsCommon always loads first. MythicLib and MMOCore should be present at startup for clean integration.
+
+## Paper API
+
+- `api-version: '1.21'`
+- Built against Paper 1.21.11 API
+- Combat listeners use standard Bukkit events (`EntityDamageByEntityEvent`, etc.)
+
+## What is not integrated (1.0.0)
+
+- PlaceholderAPI placeholders (use `/sts info` or custom plugins)
+- Vault economy
+- WorldGuard regions (use `world` condition for coarse filtering)
+- Custom mob plugins (use `target_type` for vanilla entity types)
+
+## Related pages
+
+- [Getting Started](Getting-Started.md)
+- [Stats System](Stats-System.md)
+- [Conditions](Conditions.md)

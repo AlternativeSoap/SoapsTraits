@@ -1,42 +1,49 @@
-# SoapsTraits Documentation
+# SoapsTraits Wiki
 
-**SoapsTraits** is a trait system plugin for Paper servers that adds class-based passive stat bonuses and triggered combat abilities to your RPG. This wiki covers everything you need to install, configure, and customize it.
+**Version:** 1.0.0  
+**Author:** AlternativeSoap  
+**Minecraft API:** 1.21 (Paper)
 
----
+SoapsTraits gives each player a class-style trait with passive stat bonuses and configurable combat effects. Traits are defined in YAML, assigned automatically from MMOCore classes or manually with commands, and edited in-game through a GUI.
 
-## Table of Contents
+## Requirements
 
-| Page | What's Inside |
-|------|---------------|
-| [Introduction](Introduction.md) | What SoapsTraits does and how it works |
-| [Getting Started](Getting-Started.md) | Installation, dependencies, first setup |
-| [Commands & Permissions](Commands-and-Permissions.md) | All commands and permission nodes |
-| [Traits Configuration](Traits-Configuration.md) | Creating and configuring traits in `traits.yml` |
-| [Triggers](Triggers.md) | When effects activate |
-| [Conditions](Conditions.md) | Checks that must pass before actions run |
-| [Actions](Actions.md) | What effects actually do |
-| [Stats System](Stats-System.md) | Stat bonuses and how they apply |
-| [Cooldowns & Durations](Cooldowns-and-Durations.md) | Time values and cooldown behavior |
-| [Integrations](Bridges-and-Integrations.md) | How MythicLib and MMOCore connect |
-| [Default Configs](Default-Configs.md) | Full default config, traits, and messages files |
-| [Examples](Examples.md) | Ready-to-use trait examples |
+| Plugin | Required |
+|--------|----------|
+| [SoapsCommon](https://www.soapsuniverse.com) | Yes (hard dependency) |
+| MythicLib | Recommended (stat modifiers) |
+| MMOCore | Recommended (class binding, mana, combat tag) |
 
----
+## Quick links
 
-## Quick Info
+- [Introduction](Introduction.md) - What the plugin does and how it fits your server
+- [Getting Started](Getting-Started.md) - Install, first reload, assign a trait
+- [Traits Configuration](Traits-Configuration.md) - Full `traits.yml` schema
+- [Triggers](Triggers.md) - When effects run
+- [Conditions](Conditions.md) - Rules that must pass
+- [Actions](Actions.md) - What happens when an effect fires
+- [Commands and Permissions](Commands-and-Permissions.md) - `/sts` reference
+- [Examples](Examples.md) - Copy-paste trait ideas
 
-- **Version:** 1.0.0
-- **Author:** AlternativeSoap
-- **Server:** Paper 1.21+
-- **Required plugins:** MythicLib 1.7.1+, MMOCore 1.13.1+
-- **Website:** [soapsuniverse.com](http://www.soapsuniverse.com)
+## Main command
 
----
+```
+/sts
+```
 
-## Quick Start
+Alias: `/soapstraits`
 
-1. Install **MythicLib** and **MMOCore** on your server
-2. Drop `SoapsTraits.jar` into `plugins/`
-3. Start the server — config files generate automatically
-4. Edit `plugins/SoapsTraits/traits.yml` to set up your traits
-5. Run `/sts reload` to apply your changes in-game
+Run `/sts` with no arguments to see the full usage list in chat.
+
+## Config files
+
+| File | Purpose |
+|------|---------|
+| `config.yml` | Server settings, default trait, tick interval |
+| `traits.yml` | All trait definitions |
+| `messages.yml` | Chat and GUI text |
+| `playerdata.yml` | Per-player trait assignments (auto-managed) |
+
+## Support
+
+Docs in this folder match **SoapsTraits 1.0.0**. After updates, run `/sts reload` and check the console for config warnings.
